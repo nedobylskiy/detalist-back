@@ -12,6 +12,7 @@ import logging
 from io import BytesIO
 import base64
 import json
+from pprint import pprint
 
 from flask import Flask, request, session, g, redirect, url_for, \
      abort, render_template, flash, jsonify
@@ -44,17 +45,20 @@ with pm.Model() as loaded_model:
     y_prob = pm.math.sigmoid(intercept + sum([coefs[i] * X_modeled[:,i] for i in range(len(train_columns))]))
     y = pm.Bernoulli('y', y_prob, observed=y_train)
     trace = pm.load_trace('traces')
-
+print(trace.varnames)
 model = loaded_model
 logging.info('Loading is finished')
-
+print(pm.summary(trace))
 def parse_tree(tree):
     res = {}
     for elname, el in tree.items():
         if isinstance(el, dict):
             res = {**res, **parse_tree(el)}
         elif elname in read_columns:
-            res[elname] = el
+            res[elname] = float(el)
+    if 'parts'in tree:
+            for part in tree['parts']:
+                res = {**res, **parse_tree(part)}
     return res
 logging.info(pd.DataFrame([{'a':1}]))
 @app.route('/', methods=['GET', 'POST'])
@@ -65,16 +69,19 @@ def index():
     row['Разница в ширине'] = abs(row['Ширина шины'] - row['Ширина диска'] - 10)
     row['Разница в диаметре'] = abs(row['Диаметр шины'] - row['Диаметр диска'] - 200)
     logging.info(row)
-    ppc = predict_for_row(row) 
+    ppc = predict_for_row(row)
     return make_plot(ppc)
 
 
 def predict_for_row(row):
+    logging.info(row)
     if isinstance(row, pd.DataFrame):
         row = row.iloc[0]
     vals = np.array([row[train_columns].tolist()]*(len(train_columns)+1))
-    masks = (np.triu(np.ones((len(train_columns)+1, len(train_columns))))).astype(bool) & pd.notna(vals) # TODO drop duplicates
-    vals[pd.isna(vals)] = 999
+    print(vals)
+    masks = (np.triu(np.ones((len(train_columns)+1, len(train_columns))))).astype(bool) | pd.isna(vals) # TODO drop duplicates
+    vals[pd.isna(vals)] = 0
+    print(masks, vals)
     return predict_with_masks(vals, masks)
 
 def predict_with_masks(vals, masks):
