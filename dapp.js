@@ -148,6 +148,12 @@ class App extends DApp {
             }
 
             let additionalInfo = req.body.additionalInfo;
+            try {
+                additionalInfo = JSON.parse(additionalInfo);
+            } catch (e) {
+            }
+
+
             if(!code || !type || !addedBy || !bench || !params || !Array.isArray(parts)) {
                 return res.send(that.jsonErrorResponse('One of requied param not found'))
             }
