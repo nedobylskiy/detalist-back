@@ -44,6 +44,8 @@ app.use(bodyParser.json());
 app.use('/', express.static('front/build'));
 app.use('/front', express.static('detalist-front'));
 
+const request = require('request');
+
 /**
  * Detalist DApp
  * Provides API interface for DApp
@@ -74,6 +76,20 @@ class App extends DApp {
             process.exit();
         });*/
 
+
+        app.get('/analytics/:id', async function (req, res) {
+            let id = req.params.id;
+            try {
+                let result = await that.contracts.ecmaPromise.callMethodRollback(DETALIST_CONTRACT_ADDRESS, 'getItem', [id], {});
+                request.post({url: 'http://localhost:5000/', form: {tree: result}}, function (err, httpResponse, body) {
+                    console.log(err, body);
+
+                    res.send(body);
+                })
+            } catch (e) {
+                res.send('Error');
+            }
+        });
 
         /**
          * Get item
