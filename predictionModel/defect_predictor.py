@@ -11,6 +11,7 @@ import pandas as pd
 import logging
 from io import BytesIO
 import base64
+import json
 
 from flask import Flask, request, session, g, redirect, url_for, \
      abort, render_template, flash, jsonify
@@ -24,7 +25,8 @@ model, trace = None, None
 x_train, y_train = None, None
 mask_num = 0
 
-train_columns = ['nuts_hardness', 'reliability_index', 'width_diff', 'diam_diff']
+read_columns = ['Твёрдость гайки', 'Диаметр шины', 'Ширина шины', 'Диаметр диска', 'Ширина диска', 'Эластичность шины', 'Индекс надёжности']
+train_columns = ['Твёрдость гайки', 'Индекс надёжности', 'Разница в ширине', 'Разница в диаметре']
 logging.basicConfig(format='%(asctime)-15s: [%(levelname)s] %(message)s', level=logging.INFO)
 ### LOAD MODEL
 logging.info('Loading model...')
@@ -46,12 +48,26 @@ with pm.Model() as loaded_model:
 model = loaded_model
 logging.info('Loading is finished')
 
-@app.route('/')
+def parse_tree(tree):
+    res = {}
+    for elname, el in tree.items():
+        if isinstance(el, dict):
+            res = {**res, **parse_tree(el)}
+        elif elname in read_columns:
+            res[elname] = el
+    return res
+logging.info(pd.DataFrame([{'a':1}]))
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    row = pd.DataFrame([{'nuts_hardness': 2.460573,  'reliability_index': 8.34, 'width_diff': 10, 'diam_diff': 0}])
-    ppc = predict_for_row(row)
+    tree = json.loads(request.form['tree'])
+    params = read_tree(tree)
+    row = pd.DataFrame([params])
+    row['Разница в ширине'] = abs(row['Ширина шины'] - row['Ширина диска'] - 10)
+    row['Разница в диаметре'] = abs(row['Диаметр шины'] - row['Диаметр диска'] - 200)
+    logging.info(row)
+    ppc = predict_for_row(row) 
     return make_plot(ppc)
-    
+
 
 def predict_for_row(row):
     if isinstance(row, pd.DataFrame):
