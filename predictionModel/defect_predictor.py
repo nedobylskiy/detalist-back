@@ -8,6 +8,15 @@ import seaborn as sns
 import theano.tensor as tt
 import pickle as pkl
 import pandas as pd
+import logging
+from io import BytesIO
+import base64
+
+from flask import Flask, request, session, g, redirect, url_for, \
+     abort, render_template, flash, jsonify
+
+app = Flask(__name__)
+app.config.from_object(__name__)
 
 sns.set(style="darkgrid")
 
@@ -16,10 +25,9 @@ x_train, y_train = None, None
 mask_num = 0
 
 train_columns = ['nuts_hardness', 'reliability_index', 'width_diff', 'diam_diff']
-
-
-    # global x_train, y_train
-    # global model, trace
+logging.basicConfig(format='%(asctime)-15s: [%(levelname)s] %(message)s', level=logging.INFO)
+### LOAD MODEL
+logging.info('Loading model...')
 with open('X_train.pkl', 'rb') as f:
     X_train = pkl.load(f)
 with open('y_train.pkl', 'rb') as f:
@@ -34,8 +42,17 @@ with pm.Model() as loaded_model:
     y_prob = pm.math.sigmoid(intercept + sum([coefs[i] * X_modeled[:,i] for i in range(len(train_columns))]))
     y = pm.Bernoulli('y', y_prob, observed=y_train)
     trace = pm.load_trace('traces')
+
 model = loaded_model
+logging.info('Loading is finished')
+
+@app.route('/')
+def index():
+    row = pd.DataFrame([{'nuts_hardness': 2.460573,  'reliability_index': 8.34, 'width_diff': 10, 'diam_diff': 0}])
+    ppc = predict_for_row(row)
+    return make_plot(ppc)
     
+
 def predict_for_row(row):
     if isinstance(row, pd.DataFrame):
         row = row.iloc[0]
@@ -59,12 +76,14 @@ def make_plot(ppc):
     plt.errorbar(np.arange(5), ppc.mean(axis=0), ppc.std(axis=0)**2, marker='^')
     plt.xticks(np.arange(5), ['empty'] + train_columns)
     plt.yticks(np.linspace(0, 1, 10))
-    plt.savefig('res.png')
+    my_stringIObytes = BytesIO()
+    plt.savefig(my_stringIObytes, format='png')
+    my_stringIObytes.seek(0)
+    my_base64_data = base64.b64encode(my_stringIObytes.read())
+    return my_base64_data
 
 if __name__ == '__main__':
-    row = pd.DataFrame([{'nuts_hardness': 2.460573,  'reliability_index': 8.34, 'width_diff': 10, 'diam_diff': 0}])
-    ppc = predict_for_row(row)
-    make_plot(ppc)
+    app.run()
     
     
     
