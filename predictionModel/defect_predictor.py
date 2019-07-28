@@ -73,7 +73,8 @@ def predict_for_row(row):
     if isinstance(row, pd.DataFrame):
         row = row.iloc[0]
     vals = np.array([row[train_columns].tolist()]*(len(train_columns)+1))
-    masks = np.triu(np.ones((len(train_columns)+1, len(train_columns))))
+    masks = (np.triu(np.ones((len(train_columns)+1, len(train_columns))))).astype(bool) & ~np.isnan(vals) # TODO drop duplicates
+    vals[np.isnan(vals)] = 999
     return predict_with_masks(vals, masks)
 
 def predict_with_masks(vals, masks):
