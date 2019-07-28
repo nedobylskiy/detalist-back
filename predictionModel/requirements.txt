@@ -1,0 +1,7 @@
+pandas==0.25.0
+pymc3
+arviz
+numpy
+matplotlib>=3.0
+seaborn
+theano
