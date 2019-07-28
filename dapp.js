@@ -82,9 +82,9 @@ class App extends DApp {
             try {
                 let result = await that.contracts.ecmaPromise.callMethodRollback(DETALIST_CONTRACT_ADDRESS, 'getItem', [id], {});
                 request.post({url: 'http://localhost:5000/', form: {tree: result}}, function (err, httpResponse, body) {
-                    console.log(err, body);
+                    //console.log(err, body);
 
-                    res.send(body);
+                    res.send('data:image/png;base64,' + body.toString());
                 })
             } catch (e) {
                 res.send('Error');
